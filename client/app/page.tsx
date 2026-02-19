@@ -1,7 +1,7 @@
 "use client";
 
 import html2canvas from "html2canvas";
-import type { DragEvent, PointerEvent, RefObject } from "react";
+import type { CSSProperties, DragEvent, PointerEvent, RefObject } from "react";
 import { useMemo, useRef, useState } from "react";
 
 type PhotoSlot = {
@@ -115,7 +115,7 @@ const createSticker = (text = "Your text"): TextSticker => ({
 });
 
 const formatBytes = (bytes?: number) => {
-  if (!bytes && bytes !== 0) return "—";
+  if (!bytes && bytes !== 0) return "-";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -293,6 +293,12 @@ export default function Home() {
     [cardSizeId],
   );
 
+  const previewWidthStyle = useMemo(
+    () =>
+      ({ "--preview-width": `${cardSize.previewMaxWidth}px` } as CSSProperties),
+    [cardSize.previewMaxWidth],
+  );
+
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
   const imagekitPublicKey =
@@ -456,7 +462,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_auto]">
             <section className="flex flex-col gap-6">
               <div className="rounded-[28px] border border-black/10 bg-white/80 px-6 py-6 shadow-[0_24px_50px_rgba(0,0,0,0.08)]">
                 <div className="flex items-start justify-between gap-4">
@@ -574,7 +580,7 @@ export default function Home() {
                             />
                             <div className="flex flex-wrap gap-2 text-[11px] text-black/50">
                               <span>{slot?.type ?? "PNG, JPG, WEBP"}</span>
-                              <span>•</span>
+                              <span>|</span>
                               <span>{formatBytes(slot?.size)}</span>
                             </div>
                           </div>
@@ -801,15 +807,15 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="flex flex-col gap-6 sticky top-10 self-start">
+            <section
+              className="flex flex-col gap-6 sticky top-10 self-start w-full lg:w-[var(--preview-width)]"
+              style={previewWidthStyle}
+            >
               <div className="rounded-[32px] border border-black/10 bg-white/60 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.08)]">
                 <div className="text-xs uppercase tracking-[0.3em] text-black/50">
                   Preview
                 </div>
-                <div
-                  className="mx-auto w-full"
-                  style={{ maxWidth: `${cardSize.previewMaxWidth}px` }}
-                >
+                <div className="mx-auto w-full">
                   <div
                     ref={cardRef}
                     className="relative mt-4 aspect-[3/2] w-full overflow-hidden rounded-[28px] border border-white/70 p-5"
