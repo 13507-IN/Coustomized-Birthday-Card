@@ -609,6 +609,7 @@ export default function Home() {
                 </div>
                 <div className="mt-6 grid gap-4">
                   {photos.map((slot, slotIndex) => {
+                    const canDeleteSlot = photos.length > 2;
                     return (
                       <div
                         key={`photo-slot-${slotIndex}`}
@@ -628,12 +629,16 @@ export default function Home() {
                           <p className="text-xs uppercase tracking-[0.25em] text-black/60">
                             Photo {slotIndex + 1}
                           </p>
-                          {slot ? (
+                          {slot || canDeleteSlot ? (
                             <button
                               onClick={() => handleRemove(slotIndex)}
                               className="text-xs uppercase tracking-[0.2em] text-black/50 transition hover:text-black"
                             >
-                              {photos.length > 2 ? "Remove slot" : "Remove"}
+                              {canDeleteSlot
+                                ? slot
+                                  ? "Remove slot"
+                                  : "Delete slot"
+                                : "Remove"}
                             </button>
                           ) : null}
                         </div>
