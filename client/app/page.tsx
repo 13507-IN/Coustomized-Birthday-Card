@@ -157,6 +157,7 @@ type DraggableImageProps = {
   className?: string;
   placeholder: string;
   onPositionChange?: (pos: { x: number; y: number }) => void;
+  exporting?: boolean;
 };
 
 function DraggableImage({
@@ -164,6 +165,7 @@ function DraggableImage({
   className,
   placeholder,
   onPositionChange,
+  exporting,
 }: DraggableImageProps) {
   const [dragging, setDragging] = useState(false);
 
@@ -206,9 +208,10 @@ function DraggableImage({
       onPointerCancel={handlePointerUp}
       style={{
         touchAction: "none",
-        borderColor: "rgba(255,255,255,0.6)",
-        backgroundColor: "rgba(255,255,255,0.4)",
-        outline: dragging ? "2px solid rgba(0,0,0,0.4)" : "none",
+        borderColor: exporting ? "rgba(255,255,255,0)" : "rgba(255,255,255,0.6)",
+        backgroundColor: exporting ? "transparent" : "rgba(255,255,255,0.4)",
+        boxShadow: exporting ? "none" : undefined,
+        outline: !exporting && dragging ? "2px solid rgba(0,0,0,0.4)" : "none",
         outlineOffset: "2px",
       }}
     >
@@ -216,9 +219,11 @@ function DraggableImage({
         <img
           src={slot.url}
           alt={slot.name}
-          className="h-full w-full select-none object-cover"
+          className="h-full w-full select-none"
           style={{
+            objectFit: "contain",
             objectPosition: `${slot.position.x}% ${slot.position.y}%`,
+            transform: "translateZ(0)",
           }}
           crossOrigin="anonymous"
           draggable={false}
@@ -324,6 +329,7 @@ export default function Home() {
   const [stickers, setStickers] = useState<TextSticker[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   const theme = useMemo(
@@ -372,8 +378,49 @@ export default function Home() {
     [secondaryGrid.columns, secondaryGrid.rows],
   );
 
+  const focusGridRows = useMemo(() => {
+    if (secondaryPhotos.length === 0) {
+      return "minmax(0, 1fr)";
+    }
+    return `minmax(0, 2fr) repeat(${secondaryGrid.rows}, minmax(0, 1fr))`;
+  }, [secondaryPhotos.length, secondaryGrid.rows]);
+
+  const baseCardHeight = useMemo(
+    () => Math.round((cardSize.previewMaxWidth * 2) / 3),
+    [cardSize.previewMaxWidth],
+  );
+
+  const photoRowsForLayout = useMemo(() => {
+    if (layoutId === "duo") {
+      return photoGrid.rows;
+    }
+    return 1 + (secondaryPhotos.length > 0 ? secondaryGrid.rows : 0);
+  }, [layoutId, photoGrid.rows, secondaryPhotos.length, secondaryGrid.rows]);
+
+  const rowHeight = useMemo(
+    () => Math.max(120, Math.round(cardSize.previewMaxWidth / 4)),
+    [cardSize.previewMaxWidth],
+  );
+
+  const dynamicCardHeight = useMemo(
+    () => Math.max(baseCardHeight, photoRowsForLayout * rowHeight + 120),
+    [baseCardHeight, photoRowsForLayout, rowHeight],
+  );
+
+  const cardHeightStyle = useMemo(
+    () =>
+      ({
+        minHeight: `${baseCardHeight}px`,
+        height: `${dynamicCardHeight}px`,
+      }) as CSSProperties,
+    [baseCardHeight, dynamicCardHeight],
+  );
+
   const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+    process.env.NEXT_PUBLIC_API_URL ??
+    (process.env.NODE_ENV === "production"
+      ? "https://coustomized-birthday-card.onrender.com"
+      : "http://localhost:4000");
   const imagekitPublicKey =
     process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY ?? "";
 
@@ -513,11 +560,14 @@ export default function Home() {
   const handleDownload = async () => {
     if (!cardRef.current) return;
     setDownloading(true);
+    setExporting(true);
     try {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
+      const exportScale = Math.max(2, Math.round(cardSize.downloadScale));
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: null,
         useCORS: true,
-        scale: cardSize.downloadScale,
+        scale: exportScale,
       });
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
@@ -532,6 +582,7 @@ export default function Home() {
       );
     } finally {
       setDownloading(false);
+      setExporting(false);
     }
   };
 
@@ -960,6 +1011,8 @@ export default function Home() {
                       background: theme.background,
                       boxShadow: theme.shadow,
                       borderColor: "rgba(255,255,255,0.7)",
+                      transform: exporting ? "translateZ(0)" : undefined,
+                      ...cardHeightStyle,
                     }}
                   >
                     <div
@@ -985,6 +1038,7 @@ export default function Home() {
                               onPositionChange={(pos) =>
                                 updatePhotoPosition(index, pos)
                               }
+                              exporting={exporting}
                             />
                           ))}
                         </div>
@@ -1020,12 +1074,7 @@ export default function Home() {
                       <>
                         <div
                           className="col-span-3 grid h-full gap-4"
-                          style={{
-                            gridTemplateRows:
-                              secondaryPhotos.length > 0
-                                ? "minmax(0, 2fr) minmax(0, 1fr)"
-                                : "minmax(0, 1fr)",
-                          }}
+                          style={{ gridTemplateRows: focusGridRows }}
                         >
                           <DraggableImage
                             slot={photos[0] ?? null}
@@ -1034,6 +1083,7 @@ export default function Home() {
                               updatePhotoPosition(0, pos)
                             }
                             className="h-full"
+                            exporting={exporting}
                           />
                           {secondaryPhotos.length > 0 ? (
                             <div
@@ -1048,6 +1098,7 @@ export default function Home() {
                                   onPositionChange={(pos) =>
                                     updatePhotoPosition(index + 1, pos)
                                   }
+                                  exporting={exporting}
                                 />
                               ))}
                             </div>
