@@ -801,8 +801,8 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="flex flex-col gap-6">
-              <div className="rounded-[32px] border border-black/10 bg-white/60 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.08)] lg:sticky lg:top-10">
+            <section className="flex flex-col gap-6 lg:sticky lg:top-10 lg:self-start">
+              <div className="rounded-[32px] border border-black/10 bg-white/60 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.08)]">
                 <div className="text-xs uppercase tracking-[0.3em] text-black/50">
                   Preview
                 </div>
