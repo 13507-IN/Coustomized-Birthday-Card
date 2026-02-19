@@ -92,6 +92,24 @@ const cardSizes = [
   },
 ];
 
+const gridFormats = [
+  {
+    id: "auto",
+    name: "Auto",
+    description: "Balanced columns based on count.",
+  },
+  {
+    id: "two",
+    name: "Two Column",
+    description: "Always aim for two columns.",
+  },
+  {
+    id: "three",
+    name: "Three Column",
+    description: "Show more tiles per row.",
+  },
+];
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
@@ -121,9 +139,15 @@ const formatBytes = (bytes?: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const getPhotoGrid = (count: number) => {
+const getPhotoGrid = (count: number, format: string) => {
   const safeCount = Math.max(1, count);
-  const columns = safeCount <= 1 ? 1 : safeCount <= 4 ? 2 : 3;
+  let columns = safeCount <= 1 ? 1 : safeCount <= 4 ? 2 : 3;
+  if (format === "two") {
+    columns = safeCount === 1 ? 1 : 2;
+  }
+  if (format === "three") {
+    columns = safeCount <= 2 ? safeCount : 3;
+  }
   const rows = Math.ceil(safeCount / columns);
   return { columns, rows };
 };
@@ -279,6 +303,7 @@ export default function Home() {
   const [themeId, setThemeId] = useState(themes[0].id);
   const [layoutId, setLayoutId] = useState(layouts[0].id);
   const [cardSizeId, setCardSizeId] = useState(cardSizes[0].id);
+  const [gridFormatId, setGridFormatId] = useState(gridFormats[0].id);
   const [photos, setPhotos] = useState<(PhotoSlot | null)[]>([
     null,
     null,
@@ -307,8 +332,8 @@ export default function Home() {
   );
 
   const photoGrid = useMemo(
-    () => getPhotoGrid(photos.length),
-    [photos.length],
+    () => getPhotoGrid(photos.length, gridFormatId),
+    [photos.length, gridFormatId],
   );
 
   const photoGridStyle = useMemo(
@@ -323,8 +348,8 @@ export default function Home() {
   const secondaryPhotos = useMemo(() => photos.slice(1), [photos]);
 
   const secondaryGrid = useMemo(
-    () => getPhotoGrid(secondaryPhotos.length),
-    [secondaryPhotos.length],
+    () => getPhotoGrid(secondaryPhotos.length, gridFormatId),
+    [secondaryPhotos.length, gridFormatId],
   );
 
   const secondaryGridStyle = useMemo(
@@ -716,6 +741,31 @@ export default function Home() {
                         />
                       </label>
                     ))}
+                  </div>
+                  <div className="grid gap-3">
+                    <p className="text-xs uppercase tracking-[0.25em] text-black/60">
+                      Photo grid
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {gridFormats.map((format) => (
+                        <button
+                          key={format.id}
+                          onClick={() => setGridFormatId(format.id)}
+                          className={`rounded-2xl border px-3 py-3 text-left text-xs uppercase tracking-[0.2em] transition ${
+                            gridFormatId === format.id
+                              ? "border-black/50 bg-black/5"
+                              : "border-black/10 bg-white"
+                          }`}
+                        >
+                          <span className="block text-[11px] text-black/70">
+                            {format.name}
+                          </span>
+                          <span className="mt-1 block text-[10px] normal-case tracking-normal text-black/50">
+                            {format.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid gap-3">
                     <p className="text-xs uppercase tracking-[0.25em] text-black/60">
