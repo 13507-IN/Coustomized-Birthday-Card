@@ -68,6 +68,30 @@ const layouts = [
   },
 ];
 
+const cardSizes = [
+  {
+    id: "standard",
+    name: "Standard",
+    description: "Balanced preview size.",
+    previewMaxWidth: 520,
+    downloadScale: 2,
+  },
+  {
+    id: "large",
+    name: "Large",
+    description: "Bigger preview + sharper export.",
+    previewMaxWidth: 620,
+    downloadScale: 2.5,
+  },
+  {
+    id: "xlarge",
+    name: "Extra",
+    description: "Largest preview + ultra export.",
+    previewMaxWidth: 720,
+    downloadScale: 3,
+  },
+];
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
@@ -247,6 +271,7 @@ export default function Home() {
   const [message, setMessage] = useState(defaultMessage);
   const [themeId, setThemeId] = useState(themes[0].id);
   const [layoutId, setLayoutId] = useState(layouts[0].id);
+  const [cardSizeId, setCardSizeId] = useState(cardSizes[0].id);
   const [photos, setPhotos] = useState<(PhotoSlot | null)[]>([
     null,
     null,
@@ -261,6 +286,11 @@ export default function Home() {
   const theme = useMemo(
     () => themes.find((item) => item.id === themeId) ?? themes[0],
     [themeId],
+  );
+
+  const cardSize = useMemo(
+    () => cardSizes.find((item) => item.id === cardSizeId) ?? cardSizes[0],
+    [cardSizeId],
   );
 
   const apiUrl =
@@ -384,7 +414,7 @@ export default function Home() {
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: null,
         useCORS: true,
-        scale: 2,
+        scale: cardSize.downloadScale,
       });
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
@@ -610,6 +640,31 @@ export default function Home() {
                       </label>
                     ))}
                   </div>
+                  <div className="grid gap-3">
+                    <p className="text-xs uppercase tracking-[0.25em] text-black/60">
+                      Card size
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {cardSizes.map((size) => (
+                        <button
+                          key={size.id}
+                          onClick={() => setCardSizeId(size.id)}
+                          className={`rounded-2xl border px-3 py-3 text-left text-xs uppercase tracking-[0.2em] transition ${
+                            cardSizeId === size.id
+                              ? "border-black/50 bg-black/5"
+                              : "border-black/10 bg-white"
+                          }`}
+                        >
+                          <span className="block text-[11px] text-black/70">
+                            {size.name}
+                          </span>
+                          <span className="mt-1 block text-[10px] normal-case tracking-normal text-black/50">
+                            {size.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid gap-3 md:grid-cols-3">
                     {themes.map((item) => (
                       <button
@@ -752,122 +807,130 @@ export default function Home() {
                   Preview
                 </div>
                 <div
-                  ref={cardRef}
-                  className="relative mt-4 aspect-[3/2] w-full overflow-hidden rounded-[28px] border border-white/70 p-5"
-                  style={{ background: theme.background, boxShadow: theme.shadow }}
+                  className="mx-auto w-full"
+                  style={{ maxWidth: `${cardSize.previewMaxWidth}px` }}
                 >
-                  <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/30 blur-2xl" />
-                  <div className="absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-white/30 blur-2xl" />
-                  <div className="relative z-10 grid h-full grid-cols-5 gap-4">
-                    {layoutId === "duo" ? (
-                      <>
-                        <div className="col-span-3 grid h-full grid-rows-5 gap-4">
-                          <DraggableImage
-                            slot={photos[0]}
-                            placeholder="Photo One"
-                            onPositionChange={(pos) =>
-                              updatePhotoPosition(0, pos)
-                            }
-                            className="row-span-3"
-                          />
-                          <DraggableImage
-                            slot={photos[1]}
-                            placeholder="Photo Two"
-                            onPositionChange={(pos) =>
-                              updatePhotoPosition(1, pos)
-                            }
-                            className="row-span-2"
-                          />
-                        </div>
-                        <div className="col-span-2 flex flex-col justify-between">
-                          <div>
-                            <p
-                              className="text-xs uppercase tracking-[0.45em]"
-                              style={{ color: theme.accent }}
-                            >
-                              Birthday
-                            </p>
-                            <h2 className="mt-3 text-2xl font-semibold leading-tight">
-                              Happy Birthday
-                              <br />
-                              {recipient || "Your Friend"}
-                            </h2>
-                            <div
-                              className="mt-4 rounded-2xl border border-dashed px-3 py-3 text-xs leading-relaxed"
-                              style={{ borderColor: theme.accent }}
-                            >
-                              {message || "Type your birthday message here."}
+                  <div
+                    ref={cardRef}
+                    className="relative mt-4 aspect-[3/2] w-full overflow-hidden rounded-[28px] border border-white/70 p-5"
+                    style={{
+                      background: theme.background,
+                      boxShadow: theme.shadow,
+                    }}
+                  >
+                    <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/30 blur-2xl" />
+                    <div className="absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-white/30 blur-2xl" />
+                    <div className="relative z-10 grid h-full grid-cols-5 gap-4">
+                      {layoutId === "duo" ? (
+                        <>
+                          <div className="col-span-3 grid h-full grid-rows-5 gap-4">
+                            <DraggableImage
+                              slot={photos[0]}
+                              placeholder="Photo One"
+                              onPositionChange={(pos) =>
+                                updatePhotoPosition(0, pos)
+                              }
+                              className="row-span-3"
+                            />
+                            <DraggableImage
+                              slot={photos[1]}
+                              placeholder="Photo Two"
+                              onPositionChange={(pos) =>
+                                updatePhotoPosition(1, pos)
+                              }
+                              className="row-span-2"
+                            />
+                          </div>
+                          <div className="col-span-2 flex flex-col justify-between">
+                            <div>
+                              <p
+                                className="text-xs uppercase tracking-[0.45em]"
+                                style={{ color: theme.accent }}
+                              >
+                                Birthday
+                              </p>
+                              <h2 className="mt-3 text-2xl font-semibold leading-tight">
+                                Happy Birthday
+                                <br />
+                                {recipient || "Your Friend"}
+                              </h2>
+                              <div
+                                className="mt-4 rounded-2xl border border-dashed px-3 py-3 text-xs leading-relaxed"
+                                style={{ borderColor: theme.accent }}
+                              >
+                                {message || "Type your birthday message here."}
+                              </div>
+                            </div>
+                            <div className="text-xs uppercase tracking-[0.3em] text-black/60">
+                              From {sender || "You"}
                             </div>
                           </div>
-                          <div className="text-xs uppercase tracking-[0.3em] text-black/60">
-                            From {sender || "You"}
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-span-3 relative">
+                            <DraggableImage
+                              slot={photos[0]}
+                              placeholder="Hero Photo"
+                              onPositionChange={(pos) =>
+                                updatePhotoPosition(0, pos)
+                              }
+                              className="h-full"
+                            />
+                            {photos[1] ? (
+                              <div className="absolute bottom-6 left-6 h-24 w-24">
+                                <DraggableImage
+                                  slot={photos[1]}
+                                  placeholder="Cameo"
+                                  onPositionChange={(pos) =>
+                                    updatePhotoPosition(1, pos)
+                                  }
+                                  className="h-full"
+                                />
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="col-span-3 relative">
-                          <DraggableImage
-                            slot={photos[0]}
-                            placeholder="Hero Photo"
-                            onPositionChange={(pos) =>
-                              updatePhotoPosition(0, pos)
-                            }
-                            className="h-full"
-                          />
-                          {photos[1] ? (
-                            <div className="absolute bottom-6 left-6 h-24 w-24">
-                              <DraggableImage
-                                slot={photos[1]}
-                                placeholder="Cameo"
-                                onPositionChange={(pos) =>
-                                  updatePhotoPosition(1, pos)
-                                }
-                                className="h-full"
-                              />
+                          <div className="col-span-2 flex flex-col justify-between">
+                            <div>
+                              <p
+                                className="text-xs uppercase tracking-[0.45em]"
+                                style={{ color: theme.accent }}
+                              >
+                                Celebrate
+                              </p>
+                              <h2 className="mt-3 text-2xl font-semibold leading-tight">
+                                {recipient || "Birthday Star"}
+                              </h2>
+                              <div
+                                className="mt-4 rounded-2xl border border-dashed px-3 py-3 text-xs leading-relaxed"
+                                style={{ borderColor: theme.accent }}
+                              >
+                                {message || "Type your birthday message here."}
+                              </div>
                             </div>
-                          ) : null}
-                        </div>
-                        <div className="col-span-2 flex flex-col justify-between">
-                          <div>
-                            <p
-                              className="text-xs uppercase tracking-[0.45em]"
-                              style={{ color: theme.accent }}
-                            >
-                              Celebrate
-                            </p>
-                            <h2 className="mt-3 text-2xl font-semibold leading-tight">
-                              {recipient || "Birthday Star"}
-                            </h2>
-                            <div
-                              className="mt-4 rounded-2xl border border-dashed px-3 py-3 text-xs leading-relaxed"
-                              style={{ borderColor: theme.accent }}
-                            >
-                              {message || "Type your birthday message here."}
+                            <div className="text-xs uppercase tracking-[0.3em] text-black/60">
+                              From {sender || "You"}
                             </div>
                           </div>
-                          <div className="text-xs uppercase tracking-[0.3em] text-black/60">
-                            From {sender || "You"}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                        </>
+                      )}
+                    </div>
+                    {stickers.map((sticker) => (
+                      <DraggableText
+                        key={sticker.id}
+                        sticker={sticker}
+                        containerRef={cardRef}
+                        color={
+                          sticker.tone === "accent"
+                            ? theme.accent
+                            : "rgba(20,20,20,0.85)"
+                        }
+                        onPositionChange={(pos) =>
+                          updateSticker(sticker.id, { position: pos })
+                        }
+                      />
+                    ))}
                   </div>
-                  {stickers.map((sticker) => (
-                    <DraggableText
-                      key={sticker.id}
-                      sticker={sticker}
-                      containerRef={cardRef}
-                      color={
-                        sticker.tone === "accent"
-                          ? theme.accent
-                          : "rgba(20,20,20,0.85)"
-                      }
-                      onPositionChange={(pos) =>
-                        updateSticker(sticker.id, { position: pos })
-                      }
-                    />
-                  ))}
                 </div>
                 <div className="mt-4 text-xs text-black/60">
                   Drag inside a photo to reposition. Use Swap to switch photo
