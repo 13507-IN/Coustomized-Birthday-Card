@@ -121,6 +121,13 @@ const formatBytes = (bytes?: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const getPhotoGrid = (count: number) => {
+  const safeCount = Math.max(1, count);
+  const columns = safeCount <= 1 ? 1 : safeCount <= 4 ? 2 : 3;
+  const rows = Math.ceil(safeCount / columns);
+  return { columns, rows };
+};
+
 type DraggableImageProps = {
   slot: PhotoSlot | null;
   className?: string;
@@ -276,7 +283,7 @@ export default function Home() {
     null,
     null,
   ]);
-  const [uploading, setUploading] = useState([false, false]);
+  const [uploading, setUploading] = useState<boolean[]>([false, false]);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [stickers, setStickers] = useState<TextSticker[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -297,6 +304,36 @@ export default function Home() {
     () =>
       ({ "--preview-width": `${cardSize.previewMaxWidth}px` } as CSSProperties),
     [cardSize.previewMaxWidth],
+  );
+
+  const photoGrid = useMemo(
+    () => getPhotoGrid(photos.length),
+    [photos.length],
+  );
+
+  const photoGridStyle = useMemo(
+    () =>
+      ({
+        gridTemplateColumns: `repeat(${photoGrid.columns}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${photoGrid.rows}, minmax(0, 1fr))`,
+      }) as CSSProperties,
+    [photoGrid.columns, photoGrid.rows],
+  );
+
+  const secondaryPhotos = useMemo(() => photos.slice(1), [photos]);
+
+  const secondaryGrid = useMemo(
+    () => getPhotoGrid(secondaryPhotos.length),
+    [secondaryPhotos.length],
+  );
+
+  const secondaryGridStyle = useMemo(
+    () =>
+      ({
+        gridTemplateColumns: `repeat(${secondaryGrid.columns}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${secondaryGrid.rows}, minmax(0, 1fr))`,
+      }) as CSSProperties,
+    [secondaryGrid.columns, secondaryGrid.rows],
   );
 
   const apiUrl =
@@ -320,6 +357,11 @@ export default function Home() {
     );
   };
 
+  const handleAddPhotoSlot = () => {
+    setPhotos((prev) => [...prev, null]);
+    setUploading((prev) => [...prev, false]);
+  };
+
   const handleAddSticker = () => {
     setStickers((prev) => [...prev, createSticker()]);
   };
@@ -329,13 +371,32 @@ export default function Home() {
   };
 
   const swapPhotos = () => {
-    setPhotos((prev) => [prev[1], prev[0]]);
+    setPhotos((prev) => {
+      if (prev.length < 2) return prev;
+      const next = [...prev];
+      [next[0], next[1]] = [next[1], next[0]];
+      return next;
+    });
   };
 
   const handleRemove = (index: number) => {
-    setPhotos((prev) =>
-      prev.map((slot, slotIndex) => (slotIndex === index ? null : slot)),
-    );
+    setPhotos((prev) => {
+      if (prev.length <= 2) {
+        return prev.map((slot, slotIndex) =>
+          slotIndex === index ? null : slot,
+        );
+      }
+      return prev.filter((_, slotIndex) => slotIndex !== index);
+    });
+    setUploading((prev) => {
+      if (prev.length <= 2) {
+        return prev.map((value, slotIndex) =>
+          slotIndex === index ? false : value,
+        );
+      }
+      return prev.filter((_, slotIndex) => slotIndex !== index);
+    });
+    setDragOverIndex((prev) => (prev === index ? null : prev));
   };
 
   const handleUpload = async (index: number, file: File | null) => {
@@ -522,8 +583,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="mt-6 grid gap-4">
-                  {[0, 1].map((slotIndex) => {
-                    const slot = photos[slotIndex];
+                  {photos.map((slot, slotIndex) => {
                     return (
                       <div
                         key={`photo-slot-${slotIndex}`}
@@ -548,7 +608,7 @@ export default function Home() {
                               onClick={() => handleRemove(slotIndex)}
                               className="text-xs uppercase tracking-[0.2em] text-black/50 transition hover:text-black"
                             >
-                              Remove
+                              {photos.length > 2 ? "Remove slot" : "Remove"}
                             </button>
                           ) : null}
                         </div>
@@ -599,13 +659,24 @@ export default function Home() {
                       </div>
                     );
                   })}
-                  <button
-                    onClick={swapPhotos}
-                    disabled={!photos[0] || !photos[1]}
-                    className="rounded-full border border-black/20 px-4 py-3 text-xs uppercase tracking-[0.3em] text-black/70 transition hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Swap photo positions
-                  </button>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={swapPhotos}
+                      disabled={photos.length < 2}
+                      className="rounded-full border border-black/20 px-4 py-3 text-xs uppercase tracking-[0.3em] text-black/70 transition hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Swap first two photos
+                    </button>
+                    <button
+                      onClick={handleAddPhotoSlot}
+                      className="flex items-center gap-3 rounded-full border border-black/20 px-4 py-3 text-xs uppercase tracking-[0.3em] text-black/70 transition hover:border-black/40"
+                    >
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-black/30 text-base leading-none">
+                        +
+                      </span>
+                      Add photo
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -827,30 +898,27 @@ export default function Home() {
                     <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/30 blur-2xl" />
                     <div className="absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-white/30 blur-2xl" />
                     <div className="relative z-10 grid h-full grid-cols-5 gap-4">
-                      {layoutId === "duo" ? (
-                        <>
-                          <div className="col-span-3 grid h-full grid-rows-5 gap-4">
+                    {layoutId === "duo" ? (
+                      <>
+                        <div
+                          className="col-span-3 grid h-full gap-4"
+                          style={photoGridStyle}
+                        >
+                          {photos.map((slot, index) => (
                             <DraggableImage
-                              slot={photos[0]}
-                              placeholder="Photo One"
+                              key={`preview-photo-${index}`}
+                              slot={slot}
+                              placeholder={`Photo ${index + 1}`}
                               onPositionChange={(pos) =>
-                                updatePhotoPosition(0, pos)
+                                updatePhotoPosition(index, pos)
                               }
-                              className="row-span-3"
                             />
-                            <DraggableImage
-                              slot={photos[1]}
-                              placeholder="Photo Two"
-                              onPositionChange={(pos) =>
-                                updatePhotoPosition(1, pos)
-                              }
-                              className="row-span-2"
-                            />
-                          </div>
-                          <div className="col-span-2 flex flex-col justify-between">
-                            <div>
-                              <p
-                                className="text-xs uppercase tracking-[0.45em]"
+                          ))}
+                        </div>
+                        <div className="col-span-2 flex flex-col justify-between">
+                          <div>
+                            <p
+                              className="text-xs uppercase tracking-[0.45em]"
                                 style={{ color: theme.accent }}
                               >
                                 Birthday
@@ -872,34 +940,47 @@ export default function Home() {
                             </div>
                           </div>
                         </>
-                      ) : (
-                        <>
-                          <div className="col-span-3 relative">
-                            <DraggableImage
-                              slot={photos[0]}
-                              placeholder="Hero Photo"
-                              onPositionChange={(pos) =>
-                                updatePhotoPosition(0, pos)
-                              }
-                              className="h-full"
-                            />
-                            {photos[1] ? (
-                              <div className="absolute bottom-6 left-6 h-24 w-24">
+                    ) : (
+                      <>
+                        <div
+                          className="col-span-3 grid h-full gap-4"
+                          style={{
+                            gridTemplateRows:
+                              secondaryPhotos.length > 0
+                                ? "minmax(0, 2fr) minmax(0, 1fr)"
+                                : "minmax(0, 1fr)",
+                          }}
+                        >
+                          <DraggableImage
+                            slot={photos[0] ?? null}
+                            placeholder="Hero Photo"
+                            onPositionChange={(pos) =>
+                              updatePhotoPosition(0, pos)
+                            }
+                            className="h-full"
+                          />
+                          {secondaryPhotos.length > 0 ? (
+                            <div
+                              className="grid h-full gap-3"
+                              style={secondaryGridStyle}
+                            >
+                              {secondaryPhotos.map((slot, index) => (
                                 <DraggableImage
-                                  slot={photos[1]}
-                                  placeholder="Cameo"
+                                  key={`secondary-photo-${index}`}
+                                  slot={slot}
+                                  placeholder={`Photo ${index + 2}`}
                                   onPositionChange={(pos) =>
-                                    updatePhotoPosition(1, pos)
+                                    updatePhotoPosition(index + 1, pos)
                                   }
-                                  className="h-full"
                                 />
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="col-span-2 flex flex-col justify-between">
-                            <div>
-                              <p
-                                className="text-xs uppercase tracking-[0.45em]"
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="col-span-2 flex flex-col justify-between">
+                          <div>
+                            <p
+                              className="text-xs uppercase tracking-[0.45em]"
                                 style={{ color: theme.accent }}
                               >
                                 Celebrate
