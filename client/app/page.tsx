@@ -199,14 +199,18 @@ function DraggableImage({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border border-white/60 bg-white/40 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)] ${
-        dragging ? "ring-2 ring-black/40" : ""
-      } ${className ?? ""}`}
+      className={`relative overflow-hidden rounded-3xl border shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)] ${className ?? ""}`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      style={{ touchAction: "none" }}
+      style={{
+        touchAction: "none",
+        borderColor: "rgba(255,255,255,0.6)",
+        backgroundColor: "rgba(255,255,255,0.4)",
+        outline: dragging ? "2px solid rgba(0,0,0,0.4)" : "none",
+        outlineOffset: "2px",
+      }}
     >
       {slot ? (
         <img
@@ -220,7 +224,10 @@ function DraggableImage({
           draggable={false}
         />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-xs font-medium text-black/50">
+        <div
+          className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-xs font-medium"
+          style={{ color: "rgba(20,20,20,0.5)" }}
+        >
           <span className="uppercase tracking-[0.3em]">{placeholder}</span>
           <span className="text-[11px] normal-case tracking-normal">
             Upload to drop a photo here
@@ -275,8 +282,8 @@ function DraggableText({
 
   return (
     <div
-      className={`absolute z-20 cursor-grab select-none rounded-full border border-white/60 bg-white/40 px-3 py-1 text-sm shadow-[0_10px_20px_rgba(0,0,0,0.18)] transition ${
-        dragging ? "cursor-grabbing ring-2 ring-black/40" : ""
+      className={`absolute z-20 cursor-grab select-none rounded-full border px-3 py-1 text-sm shadow-[0_10px_20px_rgba(0,0,0,0.18)] transition ${
+        dragging ? "cursor-grabbing" : ""
       }`}
       style={{
         left: `${sticker.position.x}%`,
@@ -284,6 +291,10 @@ function DraggableText({
         transform: "translate(-50%, -50%)",
         fontSize: `${sticker.size}px`,
         color,
+        borderColor: "rgba(255,255,255,0.6)",
+        backgroundColor: "rgba(255,255,255,0.4)",
+        outline: dragging ? "2px solid rgba(0,0,0,0.4)" : "none",
+        outlineOffset: "2px",
         touchAction: "none",
       }}
       onPointerDown={handlePointerDown}
@@ -944,14 +955,21 @@ export default function Home() {
                 <div className="mx-auto w-full">
                   <div
                     ref={cardRef}
-                    className="relative mt-4 aspect-[3/2] w-full overflow-hidden rounded-[28px] border border-white/70 p-5"
+                    className="relative mt-4 aspect-[3/2] w-full overflow-hidden rounded-[28px] border p-5"
                     style={{
                       background: theme.background,
                       boxShadow: theme.shadow,
+                      borderColor: "rgba(255,255,255,0.7)",
                     }}
                   >
-                    <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/30 blur-2xl" />
-                    <div className="absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-white/30 blur-2xl" />
+                    <div
+                      className="absolute -right-10 -top-10 h-36 w-36 rounded-full blur-2xl"
+                      style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
+                    />
+                    <div
+                      className="absolute -bottom-12 left-10 h-32 w-32 rounded-full blur-2xl"
+                      style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
+                    />
                     <div className="relative z-10 grid h-full grid-cols-5 gap-4">
                     {layoutId === "duo" ? (
                       <>
@@ -990,7 +1008,10 @@ export default function Home() {
                                 {message || "Type your birthday message here."}
                               </div>
                             </div>
-                            <div className="text-xs uppercase tracking-[0.3em] text-black/60">
+                            <div
+                              className="text-xs uppercase tracking-[0.3em]"
+                              style={{ color: "rgba(20,20,20,0.6)" }}
+                            >
                               From {sender || "You"}
                             </div>
                           </div>
@@ -1050,7 +1071,10 @@ export default function Home() {
                                 {message || "Type your birthday message here."}
                               </div>
                             </div>
-                            <div className="text-xs uppercase tracking-[0.3em] text-black/60">
+                            <div
+                              className="text-xs uppercase tracking-[0.3em]"
+                              style={{ color: "rgba(20,20,20,0.6)" }}
+                            >
                               From {sender || "You"}
                             </div>
                           </div>
