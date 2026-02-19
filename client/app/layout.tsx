@@ -1,13 +1,5 @@
 import type { Metadata } from "next";
-import { Unbounded } from "next/font/google";
 import "./globals.css";
-
-const brandFont = Unbounded({
-  variable: "--font-brand",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Birthday Card Studio",
@@ -21,7 +13,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${brandFont.variable} antialiased`}>{children}</body>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&display=swap"
+        />
+      </head>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
