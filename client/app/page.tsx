@@ -1,13 +1,23 @@
 "use client";
 
 import html2canvas from "html2canvas";
-import type { PointerEvent } from "react";
+import type { DragEvent, PointerEvent, RefObject } from "react";
 import { useMemo, useRef, useState } from "react";
 
 type PhotoSlot = {
   url: string;
   name: string;
   position: { x: number; y: number };
+  size?: number;
+  type?: string;
+};
+
+type TextSticker = {
+  id: string;
+  text: string;
+  position: { x: number; y: number };
+  size: number;
+  tone: "accent" | "ink";
 };
 
 type Theme = {
@@ -64,11 +74,28 @@ const clamp = (value: number, min: number, max: number) =>
 const defaultMessage =
   "Wishing you a year filled with confetti moments, brave dreams, and extra dessert.";
 
-const createSlot = (url: string, name: string): PhotoSlot => ({
+const createSlot = (url: string, file: File): PhotoSlot => ({
   url,
-  name,
+  name: file.name,
+  size: file.size,
+  type: file.type,
   position: { x: 50, y: 50 },
 });
+
+const createSticker = (text = "Your text"): TextSticker => ({
+  id: `sticker-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  text,
+  position: { x: 70, y: 20 },
+  size: 18,
+  tone: "accent",
+});
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes && bytes !== 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 type DraggableImageProps = {
   slot: PhotoSlot | null;
@@ -149,6 +176,71 @@ function DraggableImage({
   );
 }
 
+type DraggableTextProps = {
+  sticker: TextSticker;
+  containerRef: RefObject<HTMLDivElement | null>;
+  color: string;
+  onPositionChange: (pos: { x: number; y: number }) => void;
+};
+
+function DraggableText({
+  sticker,
+  containerRef,
+  color,
+  onPositionChange,
+}: DraggableTextProps) {
+  const [dragging, setDragging] = useState(false);
+
+  const updatePosition = (event: PointerEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    onPositionChange({ x: clamp(x, 0, 100), y: clamp(y, 0, 100) });
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updatePosition(event);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragging) return;
+    updatePosition(event);
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    setDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  return (
+    <div
+      className={`absolute z-20 cursor-grab select-none rounded-full border border-white/60 bg-white/40 px-3 py-1 text-sm shadow-[0_10px_20px_rgba(0,0,0,0.18)] transition ${
+        dragging ? "cursor-grabbing ring-2 ring-black/40" : ""
+      }`}
+      style={{
+        left: `${sticker.position.x}%`,
+        top: `${sticker.position.y}%`,
+        transform: "translate(-50%, -50%)",
+        fontSize: `${sticker.size}px`,
+        color,
+        touchAction: "none",
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      {sticker.text}
+    </div>
+  );
+}
+
 export default function Home() {
   const [recipient, setRecipient] = useState("");
   const [sender, setSender] = useState("");
@@ -160,6 +252,8 @@ export default function Home() {
     null,
   ]);
   const [uploading, setUploading] = useState([false, false]);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [stickers, setStickers] = useState<TextSticker[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -180,6 +274,22 @@ export default function Home() {
         slotIndex === index && slot ? { ...slot, position } : slot,
       ),
     );
+  };
+
+  const updateSticker = (id: string, updates: Partial<TextSticker>) => {
+    setStickers((prev) =>
+      prev.map((sticker) =>
+        sticker.id === id ? { ...sticker, ...updates } : sticker,
+      ),
+    );
+  };
+
+  const handleAddSticker = () => {
+    setStickers((prev) => [...prev, createSticker()]);
+  };
+
+  const handleRemoveSticker = (id: string) => {
+    setStickers((prev) => prev.filter((sticker) => sticker.id !== id));
   };
 
   const swapPhotos = () => {
@@ -240,7 +350,7 @@ export default function Home() {
 
       setPhotos((prev) =>
         prev.map((slot, slotIndex) =>
-          slotIndex === index ? createSlot(uploadData.url, file.name) : slot,
+          slotIndex === index ? createSlot(uploadData.url, file) : slot,
         ),
       );
     } catch (uploadError) {
@@ -255,6 +365,15 @@ export default function Home() {
           slotIndex === index ? false : value,
         ),
       );
+    }
+  };
+
+  const handleDrop = (index: number, event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragOverIndex(null);
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      void handleUpload(index, file);
     }
   };
 
@@ -357,11 +476,12 @@ export default function Home() {
                     <p className="text-xs uppercase tracking-[0.3em] text-black/50">
                       Step 2
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold">
-                      Upload photos
-                    </h2>
-                    <p className="mt-2 text-xs text-black/60">
-                      Upload to ImageKit and drag inside the frame to reposition.
+                  <h2 className="mt-2 text-lg font-semibold">
+                    Upload photos
+                  </h2>
+                  <p className="mt-2 text-xs text-black/60">
+                      Upload to ImageKit, drag inside the frame to reposition, or
+                      drop a file straight onto a slot.
                     </p>
                   </div>
                 </div>
@@ -371,7 +491,17 @@ export default function Home() {
                     return (
                       <div
                         key={`photo-slot-${slotIndex}`}
-                        className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white/70 px-4 py-4"
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setDragOverIndex(slotIndex);
+                        }}
+                        onDragLeave={() => setDragOverIndex(null)}
+                        onDrop={(event) => handleDrop(slotIndex, event)}
+                        className={`flex flex-col gap-3 rounded-2xl border px-4 py-4 transition ${
+                          dragOverIndex === slotIndex
+                            ? "border-black/40 bg-black/5"
+                            : "border-black/10 bg-white/70"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <p className="text-xs uppercase tracking-[0.25em] text-black/60">
@@ -386,17 +516,39 @@ export default function Home() {
                             </button>
                           ) : null}
                         </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) =>
-                            handleUpload(
-                              slotIndex,
-                              event.target.files?.[0] ?? null,
-                            )
-                          }
-                          className="text-xs text-black/70"
-                        />
+                        <div className="flex items-center gap-3">
+                          <div className="h-14 w-14 overflow-hidden rounded-2xl border border-black/10 bg-white">
+                            {slot ? (
+                              <img
+                                src={slot.url}
+                                alt={slot.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-[0.2em] text-black/40">
+                                Empty
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-1 flex-col gap-2">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                handleUpload(
+                                  slotIndex,
+                                  event.target.files?.[0] ?? null,
+                                )
+                              }
+                              className="text-xs text-black/70"
+                            />
+                            <div className="flex flex-wrap gap-2 text-[11px] text-black/50">
+                              <span>{slot?.type ?? "PNG, JPG, WEBP"}</span>
+                              <span>•</span>
+                              <span>{formatBytes(slot?.size)}</span>
+                            </div>
+                          </div>
+                        </div>
                         {uploading[slotIndex] ? (
                           <p className="text-xs text-black/60">Uploading...</p>
                         ) : slot ? (
@@ -405,7 +557,7 @@ export default function Home() {
                           </p>
                         ) : (
                           <p className="text-xs text-black/50">
-                            PNG, JPG, or WEBP
+                            Tip: Drop a file here to upload faster.
                           </p>
                         )}
                       </div>
@@ -479,6 +631,104 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-black/10 bg-white/80 px-6 py-6 shadow-[0_24px_50px_rgba(0,0,0,0.08)]">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-black/50">
+                    Step 4
+                  </p>
+                  <h2 className="mt-2 text-lg font-semibold">
+                    Custom text stickers
+                  </h2>
+                  <p className="mt-2 text-xs text-black/60">
+                    Add extra text and drag it anywhere on the card preview.
+                  </p>
+                </div>
+                <div className="mt-6 grid gap-4">
+                  {stickers.map((sticker, index) => (
+                    <div
+                      key={sticker.id}
+                      className="rounded-2xl border border-black/10 bg-white/80 px-4 py-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs uppercase tracking-[0.25em] text-black/60">
+                          Sticker {index + 1}
+                        </p>
+                        <button
+                          onClick={() => handleRemoveSticker(sticker.id)}
+                          className="text-xs uppercase tracking-[0.2em] text-black/50 transition hover:text-black"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="mt-3 grid gap-3">
+                        <input
+                          value={sticker.text}
+                          onChange={(event) =>
+                            updateSticker(sticker.id, {
+                              text: event.target.value,
+                            })
+                          }
+                          placeholder="Write your custom text"
+                          className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm outline-none transition focus:border-black/40"
+                        />
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
+                          <label className="text-black/60">Size</label>
+                          <input
+                            type="range"
+                            min={12}
+                            max={36}
+                            value={sticker.size}
+                            onChange={(event) =>
+                              updateSticker(sticker.id, {
+                                size: Number(event.target.value),
+                              })
+                            }
+                            className="w-32 accent-black"
+                          />
+                          <span className="text-black/60">
+                            {sticker.size}px
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-black/60">Tone</span>
+                          <button
+                            onClick={() =>
+                              updateSticker(sticker.id, { tone: "accent" })
+                            }
+                            className={`rounded-full border px-3 py-1 uppercase tracking-[0.2em] ${
+                              sticker.tone === "accent"
+                                ? "border-black/40 bg-black/5"
+                                : "border-black/10 bg-white"
+                            }`}
+                          >
+                            Accent
+                          </button>
+                          <button
+                            onClick={() =>
+                              updateSticker(sticker.id, { tone: "ink" })
+                            }
+                            className={`rounded-full border px-3 py-1 uppercase tracking-[0.2em] ${
+                              sticker.tone === "ink"
+                                ? "border-black/40 bg-black/5"
+                                : "border-black/10 bg-white"
+                            }`}
+                          >
+                            Ink
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleAddSticker}
+                    disabled={stickers.length >= 3}
+                    className="rounded-full border border-black/20 px-4 py-3 text-xs uppercase tracking-[0.3em] text-black/70 transition hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Add text sticker
+                  </button>
                 </div>
               </div>
 
@@ -603,6 +853,21 @@ export default function Home() {
                       </>
                     )}
                   </div>
+                  {stickers.map((sticker) => (
+                    <DraggableText
+                      key={sticker.id}
+                      sticker={sticker}
+                      containerRef={cardRef}
+                      color={
+                        sticker.tone === "accent"
+                          ? theme.accent
+                          : "rgba(20,20,20,0.85)"
+                      }
+                      onPositionChange={(pos) =>
+                        updateSticker(sticker.id, { position: pos })
+                      }
+                    />
+                  ))}
                 </div>
                 <div className="mt-4 text-xs text-black/60">
                   Drag inside a photo to reposition. Use Swap to switch photo
