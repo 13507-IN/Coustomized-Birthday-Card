@@ -434,7 +434,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f6efe6] text-[#1b1b1b]">
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-x-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(255,255,255,0)_55%),_radial-gradient(circle_at_80%_30%,_rgba(255,255,255,0.4),_rgba(255,255,255,0)_65%)]" />
         <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:px-10">
           <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -802,7 +802,7 @@ export default function Home() {
             </section>
 
             <section className="flex flex-col gap-6">
-              <div className="rounded-[32px] border border-black/10 bg-white/60 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.08)]">
+              <div className="rounded-[32px] border border-black/10 bg-white/60 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.08)] lg:sticky lg:top-10">
                 <div className="text-xs uppercase tracking-[0.3em] text-black/50">
                   Preview
                 </div>
